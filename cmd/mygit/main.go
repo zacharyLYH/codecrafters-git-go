@@ -80,6 +80,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to write compressed data to: %s. Tried to write %s. Error message: %s", saveDirectory, compressedData, err)
 			os.Exit(1)
 		}
+		os.Stdout.Write([]byte(hash[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command %s\n", command)
 		os.Exit(1)
