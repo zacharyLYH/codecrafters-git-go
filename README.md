@@ -46,7 +46,10 @@ For example:
 
 ```sh
 mkdir -p /tmp/testing && cd /tmp/testing
-/path/to/your/repo/your_git.sh init
+/home/birdy/codecrafters-git-go/your_git.sh init #For my convenience
+echo "hello world i am a hello world text file?!" > hello.txt
+/home/birdy/codecrafters-git-go/your_git.sh hash-object -w hello.txt #Write hello.txt into the blob
+/home/birdy/codecrafters-git-go/your_git.sh cat-file -p c4c8fa2c1ab37d1c6a0d14b3fe1bbf6b14611720 #Read from the blob
 ```
 
 To make this easier to type out, you could add a
