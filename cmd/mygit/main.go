@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 )
 
 // Usage: your_git.sh <command> <arg1> <arg2> ...
@@ -64,32 +63,25 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to read the file: %s", fileData)
 			os.Exit(1)
 		}
-		lengthStr := strconv.Itoa(len(fileData)) // Convert the length of the fileData to a string
 		// Create the Git blob header with a null character
-		header := []byte(fmt.Sprintf("blob %s\x00", lengthStr))
+		header := fmt.Sprintf("blob %d\x00", len(fileData))
 		// Concatenate the header and the original file data
-		fileData = append(header, fileData...)
+		fileData = append([]byte(header), fileData...)
 		hash, compressedData, compressErr := compress(fileData)
 		if compressErr != nil {
 			fmt.Fprintf(os.Stderr, "Failed to compress the file: %s", compressedData)
 			os.Exit(1)
 		}
-		saveDirectory := fmt.Sprintf(".git/objects/%s/%s", hash[:2], hash[2:])
+		saveDirectory := fmt.Sprintf(".git/objects/%x/%x", hash[:1], hash[1:])
 		successWrite := createNewFile(saveDirectory, compressedData)
 		if successWrite != nil {
 			fmt.Fprintf(os.Stderr, "Failed to write compressed data to: %s. Tried to write %s. Error message: %s", saveDirectory, compressedData, err)
 			os.Exit(1)
 		}
-		os.Stdout.Write([]byte(hash[2:]))
+		fmt.Printf("%x\n", hash)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command %s\n", command)
 		os.Exit(1)
-	}
-}
-
-func check(e error) {
-	if e != nil {
-		panic(e)
 	}
 }
 
@@ -117,13 +109,11 @@ func createNewFile(filePath string, data []byte) error {
 }
 
 func readFileReturnString(fileName string) ([]byte, error) {
-	content, err := os.Open(fileName)
-	check(err)
-	defer content.Close()
-	readBuffer := make([]byte, 4096)
-	_, err = content.Read(readBuffer)
-	check(err)
-	return readBuffer, nil
+	file_contents, err := os.ReadFile(fileName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %s\n", err)
+	}
+	return file_contents, nil
 }
 
 func readBlob(sha1 string) ([]byte, error) {
@@ -151,11 +141,11 @@ func readBlob(sha1 string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func compress(data []byte) (string, []byte, error) {
+func compress(data []byte) ([]byte, []byte, error) {
 	// Calculate the SHA-1 hash of the input data
 	sha := sha1.New()
 	sha.Write(data)
-	hash := fmt.Sprintf("%x", sha.Sum(nil)) // Convert the hash to a hexadecimal string
+	hash := sha.Sum(nil) // Convert the hash to a hexadecimal string
 
 	// Create a buffer for compressed data
 	var buffer bytes.Buffer
@@ -164,7 +154,7 @@ func compress(data []byte) (string, []byte, error) {
 	// Compress the data
 	_, err := writer.Write(data) // Write data to the zlib writer
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 	writer.Close() // Finalize compression
 
