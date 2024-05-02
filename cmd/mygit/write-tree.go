@@ -28,44 +28,55 @@ func dfs(dir string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to open directory: %s", err)
 	}
 	defer directory.Close()
-	// Read all files and directories in the current directory
+
 	fileInfos, err := directory.Readdir(-1)
 	if err != nil {
 		return nil, err
 	}
-	// Process each file/directory
-	var entries []string
+
+	// Prepare a slice of entries that include the name for sorting
+	type entry struct {
+		name string
+		mode string
+		hash []byte
+	}
+	var entries []entry
 	for _, fileInfo := range fileInfos {
+		if fileInfo.Name() == ".git" {
+			continue
+		}
 		fullPath := filepath.Join(dir, fileInfo.Name())
-		if fileInfo.IsDir() { //040000
-			if fileInfo.Name() == ".git" {
-				continue
-			}
-			if hash, err := dfs(fullPath); err != nil {
+		mode := "100644" // Default mode for files
+		if fileInfo.IsDir() {
+			mode = "40000"
+			hash, err := dfs(fullPath)
+			if err != nil {
 				return nil, err
-			} else {
-				entries = append(entries, fmt.Sprintf("%s %s\x00%s", "40000", fileInfo.Name(), hash))
 			}
+			entries = append(entries, entry{fileInfo.Name(), mode, hash})
 		} else {
 			fileData, err := os.ReadFile(fullPath)
 			if err != nil {
-				return nil, fmt.Errorf("failed to read the file: %s", fileData)
+				return nil, fmt.Errorf("failed to read file: %s", err)
 			}
 			header := fmt.Sprintf("blob %d\x00", len(fileData))
-			fileData = append([]byte(header), fileData...)
-			hash, _, hashErr := compress(fileData)
-			if hashErr != nil {
-				return nil, fmt.Errorf("failed to compress file: %s", hashErr)
+			blobData := append([]byte(header), fileData...)
+			hash, _, err := compress(blobData)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compress file: %s", err)
 			}
-			entries = append(entries, fmt.Sprintf("%s %s\x00%s", "100644", fileInfo.Name(), hash))
+			entries = append(entries, entry{fileInfo.Name(), mode, hash})
 		}
 	}
-	// Sort entries as required by Git
-	sort.Strings(entries)
+
+	// Sort entries by name
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].name < entries[j].name
+	})
 
 	var data bytes.Buffer
-	for _, entry := range entries {
-		data.WriteString(entry)
+	for _, e := range entries {
+		data.WriteString(fmt.Sprintf("%s %s\x00%s", e.mode, e.name, e.hash))
 	}
 
 	treeData := fmt.Sprintf("tree %d\x00%s", data.Len(), data.Bytes())
@@ -74,10 +85,8 @@ func dfs(dir string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to compress treeObjData: %s", hashErr)
 	}
 	saveDirectory := fmt.Sprintf(".git/objects/%x/%x", hash[:1], hash[1:])
-	successWrite := createNewFile(saveDirectory, compressedData)
-	if successWrite != nil {
-		fmt.Fprintf(os.Stderr, "Failed to write compressed data to: %s. Tried to write %s. Error message: %s", saveDirectory, compressedData, err)
-		os.Exit(1)
+	if err := createNewFile(saveDirectory, compressedData); err != nil {
+		return nil, fmt.Errorf("failed to write compressed data to %s: %v", saveDirectory, err)
 	}
 	return hash, nil
 }
