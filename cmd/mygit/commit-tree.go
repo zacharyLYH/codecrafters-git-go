@@ -77,13 +77,5 @@ func commit(treeHash string, parentHash string, commitMessage string) []byte {
 		fmt.Fprintf(os.Stderr, "Failed to write compressed data to: %s. Tried to write %s. Error message: %s", saveDirectory, compressedData, successWrite)
 		os.Exit(1)
 	}
-	//debug
-	blobSha := fmt.Sprintf("%x", hash)
-	blobContent, err := readBlob(blobSha)
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to read the blob: %s", blobContent)
-		os.Exit(1)
-	}
 	return hash
 }
