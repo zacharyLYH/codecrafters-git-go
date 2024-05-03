@@ -28,7 +28,7 @@ func hashObject() {
 	saveDirectory := fmt.Sprintf(".git/objects/%x/%x", hash[:1], hash[1:])
 	successWrite := createNewFile(saveDirectory, compressedData)
 	if successWrite != nil {
-		fmt.Fprintf(os.Stderr, "Failed to write compressed data to: %s. Tried to write %s. Error message: %s", saveDirectory, compressedData, err)
+		fmt.Fprintf(os.Stderr, "Failed to write compressed data to: %s. Tried to write %s. Error message: %s", saveDirectory, compressedData, successWrite)
 		os.Exit(1)
 	}
 	fmt.Printf("%x\n", hash)
