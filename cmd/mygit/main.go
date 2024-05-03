@@ -37,12 +37,6 @@ func main() {
 		cwd, _ := os.Getwd()
 		writeTree(cwd)
 	case "commit-tree":
-		// tree_sha := os.Args[2]
-		// tree, _ := readBlob(tree_sha)
-		// fmt.Println(string(tree))
-		// commitSha := os.Args[4]
-		// commit, _ := readBlob(commitSha)
-		// fmt.Println(string(commit))
 		commitTree()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command %s\n", command)
